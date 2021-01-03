@@ -5,7 +5,7 @@ async def m_usage(message, args):
     return '''Usage:
 - $bet all
 - $bet start <content>
-- $bet dime <id> <amount> <side>
+- $bet dime <id> <side> <amount>
 - $bet close <id> <win_side>
 - $user init 
 - $user credits
@@ -20,7 +20,7 @@ async def m_test(message, args):
     return 'You got me :)'
 
 async def m_facts(message, args):
-    if len(args) > 2 or len(args) == 0:
+    if len(args) > 2:
         print('facts: too many arguements:\n - ' + '\n - '.join(map(str, args)))
         return 'Invalid'
 
