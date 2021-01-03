@@ -1,7 +1,7 @@
 import discord
 import qrys
 
-def m_usage(message, args):
+async def m_usage(message, args):
     return '''Usage:
 - $bet all
 - $bet start <content>
