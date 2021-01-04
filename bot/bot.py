@@ -50,7 +50,7 @@ async def on_message(message):
 
     if response == 'Invalid':
         print('Invalid Command: ' + message.content + '\nwith details: ' + str(message))
-        response = cm.m_usage(0, 0)
+        response = await cm.m_usage(0, 0)
 
     await message.channel.send(response)
 
