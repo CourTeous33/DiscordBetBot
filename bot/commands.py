@@ -3,18 +3,19 @@ import qrys
 
 async def m_usage(message, args):
     return '''Usage:
-- $bet all
-- $bet start <content>
-- $bet dime <id> <side> <amount>
-- $bet close <id> <win_side>
-- $user init 
-- $user credits
-- $reset
-- $facts
-- $facts add <content>
-- $facts all
-- $facts remove <content>
-- $test
+- $bet all: List all current open games
+- $bet start <content>: Start a bet with given content
+- $bet dime <id> <side> <amount>: Bet a game on <side>(1 for yes/0 for no) with <amount>
+- $bet close <id>: Close a game so that no one can dime
+- $bet result <id> <win_side>: Set result of a game and get balance
+- $user init: Initialize a user account for yourself
+- $user credits: Check your current balance
+- $reset: Reset your balance to 2000
+- $facts: Get a random fact
+- $facts add <content>: Add a fact
+- $facts all: List all facts
+- $facts remove <content>: Remove a fact
+- $test: Test connection
 - current version: v0.0.2'''
 
 async def m_test(message, args):
@@ -126,12 +127,12 @@ async def m_bet(message, args):
             if amount <= 0:
                 return 'You need to dime at least 0.01'
 
-            if (await _get_closed_by_id(game_id)) == 1:
+            if not (await _get_closed_by_id(game_id)) == 0:
                 return 'You can not dime a closed game.'
 
             if (await qrys.check_credits(user_id)) - amount < 0:
                 return 'You do not have enough balance.'\
-                    + 'If you ran got of your balance, try "$reset" to get some balance'
+                    + '\nIf you ran got of your balance, try "$reset" to get some balance'
 
             res = await qrys.add_bet(game_id, message.author.id, amount, side)
             if res == -1:
@@ -160,7 +161,11 @@ async def m_bet(message, args):
                 return 'Invalid'
 
             if (await _get_closed_by_id(game_id)) == 0:
-                return 'Please use "$bet close ' + str(game_id) + '"close game: ' + str(game_id) + ' first.'
+                return 'Please use "$bet close ' + str(game_id) + '" to close game: ' + str(game_id) + ' first.'
+
+            res = await qrys.result_game(game_id, win_side)
+            if res == -1:
+                return _internal_error()
 
             raw_odds = await _check_cur_odds(game_id)
             winner_list = await qrys.get_game_side_bets(game_id, win_side)
@@ -168,6 +173,8 @@ async def m_bet(message, args):
                 user_id = winner[0]
                 amount = winner[1] * (raw_odds[win_side] + 1)
                 res = await qrys.change_credits(user_id, amount)
+                if res == -1:
+                    return _internal_error()
             return 'Successfully result game: ' + str(game_id) + ' and win side is ' + str(win_side) + '.'\
                 + '\nTry "$user credits" to check your current balance'
             
@@ -186,7 +193,7 @@ async def _get_content_by_id(game_id):
 
 async def _get_closed_by_id(game_id):
     row = await qrys.get_game_by_id(game_id)
-    return row[2]
+    return row[3]
 
 def _internal_error():
     return 'Internal error! send DM to 333'
