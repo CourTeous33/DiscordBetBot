@@ -259,12 +259,29 @@ async def add_bet(game_id, user_id, bet, side):
     return 0
 
 async def close_game(game_id, wins_side):
-    qry = 'UPDATE games SET is_closed = ?, win_side = ? WHERE id = ?'
+    qry = 'UPDATE games SET is_closed = ? WHERE id = ?'
     global db
     c = await db.cursor()
 
     try:
-        await c.execute(qry, (1, wins_side, game_id))
+        await c.execute(qry, (1, game_id))
+    except sqlite3.Error as er:
+        print('SQLite error: %s' % (' '.join(er.args)))
+        print("Exception class is: ", er.__class__)
+        await c.close()
+        return -1
+    
+    await db.commit()
+    await c.close()
+    return 0
+
+async def result_game(game_id, wins_side):
+    qry = 'UPDATE games SET win_side = ? WHERE id = ?'
+    global db
+    c = await db.cursor()
+
+    try:
+        await c.execute(qry, (wins_side, game_id))
     except sqlite3.Error as er:
         print('SQLite error: %s' % (' '.join(er.args)))
         print("Exception class is: ", er.__class__)

@@ -14,7 +14,8 @@ def m_usage(message, args):
 - $facts add <content>
 - $facts all
 - $facts remove <content>
-- $test'''
+- $test
+- current version: v0.0.2'''
 
 async def m_test(message, args):
     return 'You got me :)'
@@ -72,7 +73,7 @@ async def m_user(message, args):
             credits = await qrys.check_credits(message.author.id)
             if credits == -1:
                 return _internal_error()
-            return 'Your balance is: ' + str(credits)
+            return 'Your balance is: ' + str(round(credits, 2))
 
     return 'Invalid'
 
@@ -105,7 +106,7 @@ async def m_bet(message, args):
             if res == -1:
                 return _internal_error()
             return 'Successfully start bet ' + content + ' with id ' + str(res) \
-                + ' , current odds are: 1:1 and 1:1.'
+                + ' , current odds are: 1:2 and 1:2.'
 
         if args[0] == 'check' and len(args) == 2:
             game_id = args[1]
@@ -122,6 +123,16 @@ async def m_bet(message, args):
                 print('bet dime: wrong side arguments: ' + str(side))
                 return 'Invalid'
 
+            if amount <= 0:
+                return 'You need to dime at least 0.01'
+
+            if (await _get_closed_by_id(game_id)) == 1:
+                return 'You can not dime a closed game.'
+
+            if (await qrys.check_credits(user_id)) - amount < 0:
+                return 'You do not have enough balance.'\
+                    + 'If you ran got of your balance, try "$reset" to get some balance'
+
             res = await qrys.add_bet(game_id, message.author.id, amount, side)
             if res == -1:
                 print('bet dime: add bets error\n - ' + '\n - '.join(map(str, args)))
@@ -131,24 +142,35 @@ async def m_bet(message, args):
             return 'Successfully dimed "' + str(await _get_content_by_id(game_id)) \
                 + '", current odds are: 1 : ' + str(1 + raw_odds[0]) + ' and 1 : ' + str(1 + raw_odds[1]) + '.'
 
-        if args[0] == 'close' and len(args) == 3:
+        if args[0] == 'close' and len(args) == 2:
+            game_id = args[1]
+
+            res = await qrys.close_game(game_id)
+            if res == -1:
+                return _internal_error()
+
+            return 'Successfully close game: ' + str(game_id) + ', it is no longer open for dimes.'
+            
+
+        if args[0] == 'result' and len(args) == 3:
             game_id = args[1]
             win_side = int(args[2])
             if not (win_side == 0 or win_side == 1):
                 print('bet dime: wrong win_side argument ' + str(win_side))
                 return 'Invalid'
 
-            res = await qrys.close_game(game_id, win_side)
-            if res == -1:
-                return _internal_error()
-            raw_odds = await _check_cur_odds(game_id)
+            if (await _get_closed_by_id(game_id)) == 0:
+                return 'Please use "$bet close ' + str(game_id) + '"close game: ' + str(game_id) + ' first.'
 
+            raw_odds = await _check_cur_odds(game_id)
             winner_list = await qrys.get_game_side_bets(game_id, win_side)
             for winner in winner_list:
                 user_id = winner[0]
                 amount = winner[1] * (raw_odds[win_side] + 1)
                 res = await qrys.change_credits(user_id, amount)
-            return 'Successfully closed game of id ' + str(game_id) + ' and win side is ' + str(win_side) + '.'
+            return 'Successfully result game: ' + str(game_id) + ' and win side is ' + str(win_side) + '.'\
+                + '\nTry "$user credits" to check your current balance'
+            
 
         print('bet: wrong number of arguements:\n - ' + '\n - '.join(map(str, args)))
         return 'Invalid'
@@ -161,6 +183,10 @@ async def _check_cur_odds(game_id):
 async def _get_content_by_id(game_id):
     row = await qrys.get_game_by_id(game_id)
     return row[1]
+
+async def _get_closed_by_id(game_id):
+    row = await qrys.get_game_by_id(game_id)
+    return row[2]
 
 def _internal_error():
     return 'Internal error! send DM to 333'
